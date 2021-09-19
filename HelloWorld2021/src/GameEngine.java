@@ -15,26 +15,37 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
     public static int WIDTH = 2000;
     public static int HEIGHT = 1000;
 
-    public static JFrame frame = new JFrame();
-
     boolean running = false;
 
     char mode;
     boolean help = false;
 
 
-    ArrayList<Ground> groundArray = new ArrayList<Ground>();
-    ArrayList<Enemy> enemyArray = new ArrayList<>();
+    public static ArrayList<Ground> groundArray = new ArrayList<Ground>();
+    public static ArrayList<Enemy> enemyArray = new ArrayList<>();
 
-    Player player;
-    boolean playerExists = false;
-    boolean enemyExists = false;
+    public static Player player;
+    public static boolean playerExists = false;
+    public static boolean enemyExists = false;
     long t1;
 
-    Flag flag;
-    boolean flagExists = false;
+    public static Flag flag;
+    public static boolean flagExists = false;
 
     Image groundImage, dirtImage, playerImage, enemyImage, flagImage;
+
+    //UI Stuff
+    public static JFrame frame = new JFrame();
+    public static JFrame subframe = new JFrame();
+    public static JPanel panel = new JPanel();
+    public static JTextField textField = new JTextField();
+    public static JLabel label = new JLabel();
+    public static Canvas canvas;
+    public static JButton button;
+
+    public static boolean loadNeeded = false;
+    public static boolean saveNeeded = false;
+    public static String levelName;
 
     public GameEngine(){
         addMouseListener(this);
@@ -155,9 +166,40 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
 
         frame = new JFrame("Hello World 2021 Game Engine");
 
-        Canvas canvas = new GameEngine();
+        canvas = new GameEngine();
         canvas.setSize(WIDTH, HEIGHT);
+
+
+        textField = new JTextField();
+        panel = new JPanel();
+        panel.setSize(WIDTH / 4, HEIGHT / 10);
+        label = new JLabel();
+        label.setText("Enter a level name (levelName.txt). \n");
+        panel.add(label);
+        textField.setText("levelName.txt");
+        textField.setSize(100, 20);
+        textField.setBounds(WIDTH / 2, 100, WIDTH / 4, HEIGHT / 15);
+        panel.add(textField);
+        button = new JButton();
+        button.setText("Load");
+        button.setSize(100, 20);
+        button.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent arg0) {
+                if(loadNeeded){
+                    GameEngine.loadLevel();
+                }
+                if(saveNeeded){
+                    GameEngine.writeLevel();
+                }
+
+            }
+        });
+        panel.add(button);
+        panel.doLayout();
+
         frame.add(canvas);
+
 
         frame.pack();
         frame.setVisible(true);
@@ -284,115 +326,26 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
             }
             //Writes level
             if(e.getKeyCode() == KeyEvent.VK_S){
-                String levelName = "";
-                try {
-                    Scanner s = new Scanner(System.in);
-                    System.out.println("Enter a level save name.");
-                    levelName = s.nextLine();
-                    FileWriter writer = new FileWriter(levelName + ".txt");
-                    if(playerExists){
-                        writer.write("px" + player.x + "\n");
-                        writer.write("py" + player.y + "\n");
-                    }
-                    if(flagExists){
-                        writer.write("fx" + flag.x + "\n");
-                        writer.write("fy" + flag.y + "\n");
-                    }
-                    for(Ground g: groundArray){
-                        writer.write("gx" + g.x + "\n");
-                        writer.write("gy" + g.y + "\n");
-                    }
-                    for(Enemy v: enemyArray){
-                        writer.write("ex" + v.x + "\n");
-                        writer.write("ey" + v.y + "\n");
-                    }
-                    writer.close();
-                } catch (IOException z) {
-                    System.out.println(levelName + " already exists.");
-                    z.printStackTrace();
-                }
+                subframe = new JFrame("Save Level");
+                button.setText("Save");
+                label.setText("Enter a level name (levelName.txt). \n");
+                subframe.add(panel);
+                subframe.setVisible(true);
+                subframe.pack();
+                loadNeeded = false;
+                saveNeeded = true;
             }
             //Reads written level
             if(e.getKeyCode() == KeyEvent.VK_L){
-                try {
 
-                    Scanner s = new Scanner(System.in);
-                    System.out.println("Enter a level load name.");
-                    String levelName = s.nextLine();
-                    File myObj = new File(levelName + ".txt");
-                    Scanner reader = new Scanner(myObj);
-
-                    int ex = 0;
-                    int ey = 0;
-                    int gx = 0;
-                    int gy = 0;
-
-                    while (reader.hasNextLine()) {
-                        String data = reader.nextLine();
-                        if(!playerExists){
-                            int playerX = 0;
-                            int playerY = 0;
-                            if (data.substring(0,2).equals("px")){
-                                playerX = Integer.parseInt(data.substring(2, data.length()));
-                            }
-                            if (data.substring(0,2).equals("py")){
-                                playerY = Integer.parseInt(data.substring(2, data.length()));
-                            }
-                            player = new Player(playerX, playerY);
-                            player.yVel = 9;
-                            playerExists = true;
-                        }
-                        if (data.substring(0,2).equals("px") && playerExists){
-                            player.x = Integer.parseInt(data.substring(2, data.length()));
-                        }
-                        if (data.substring(0,2).equals("py") && playerExists){
-                            player.y = Integer.parseInt(data.substring(2, data.length()));
-                        }
-                        if(!flagExists){
-                            int flagX = 0;
-                            int flagY = 0;
-                            if (data.substring(0,2).equals("px")){
-                                flagX = Integer.parseInt(data.substring(2, data.length()));
-                            }
-                            if (data.substring(0,2).equals("py")){
-                                flagY = Integer.parseInt(data.substring(2, data.length()));
-                            }
-                            flag = new Flag(flagX, flagX);
-                            flagExists = true;
-                        }
-                        if (data.substring(0,2).equals("fx") && flagExists){
-                            flag.x = Integer.parseInt(data.substring(2, data.length()));
-                        }
-                        if (data.substring(0,2).equals("fy") && flagExists){
-                            flag.y = Integer.parseInt(data.substring(2, data.length()));
-                        }
-
-                        if(data.substring(0,2).equals("gx")){
-                            gx = Integer.parseInt(data.substring(2, data.length()));
-                        }
-                        if(data.substring(0,2).equals("gy")){
-                            gy = Integer.parseInt(data.substring(2, data.length()));
-                            groundArray.add(new Ground(gx, gy));
-                        }
-
-                        if(data.substring(0,2).equals("ex")){
-                            ex = Integer.parseInt(data.substring(2, data.length()));
-                        }
-                        if(data.substring(0,2).equals("ey")){
-                            ey = Integer.parseInt(data.substring(2, data.length()));
-                            enemyArray.add(new Enemy(ex, ey));
-                            enemyArray.get(enemyArray.size() - 1).xVel = 1;
-                            enemyArray.get(enemyArray.size() - 1).yVel = 9;
-                            enemyExists = true;
-                        }
-
-
-                    }
-                    reader.close();
-                } catch (FileNotFoundException zz) {
-                    System.out.println("An error occurred.");
-                    zz.printStackTrace();
-                }
+                subframe = new JFrame("Load Level");
+                button.setText("Load");
+                label.setText("Enter a level name (levelName.txt). \n");
+                subframe.add(panel);
+                subframe.setVisible(true);
+                subframe.pack();
+                saveNeeded = false;
+                loadNeeded = true;
             }
         }
     }
@@ -562,5 +515,126 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
     @Override
     public void mouseMoved(MouseEvent e) {
 
+    }
+
+    //Reading/Writing Levels
+
+    public static void loadLevel(){
+        if(textField.getText().contains(".txt")){
+            subframe.setVisible(false);
+            try {
+
+                levelName = textField.getText();
+
+                File myObj = new File(levelName);
+                Scanner reader = new Scanner(myObj);
+
+                int ex = 0;
+                int ey = 0;
+                int gx = 0;
+                int gy = 0;
+
+                while (reader.hasNextLine()) {
+                    String data = reader.nextLine();
+                    if(!playerExists){
+                        int playerX = 0;
+                        int playerY = 0;
+                        if (data.substring(0,2).equals("px")){
+                            playerX = Integer.parseInt(data.substring(2, data.length()));
+                        }
+                        if (data.substring(0,2).equals("py")){
+                            playerY = Integer.parseInt(data.substring(2, data.length()));
+                        }
+                        player = new Player(playerX, playerY);
+                        player.yVel = 9;
+                        playerExists = true;
+                    }
+                    if (data.substring(0,2).equals("px") && playerExists){
+                        player.x = Integer.parseInt(data.substring(2, data.length()));
+                    }
+                    if (data.substring(0,2).equals("py") && playerExists){
+                        player.y = Integer.parseInt(data.substring(2, data.length()));
+                    }
+                    if(!flagExists){
+                        int flagX = 0;
+                        int flagY = 0;
+                        if (data.substring(0,2).equals("px")){
+                            flagX = Integer.parseInt(data.substring(2, data.length()));
+                        }
+                        if (data.substring(0,2).equals("py")){
+                            flagY = Integer.parseInt(data.substring(2, data.length()));
+                        }
+                        flag = new Flag(flagX, flagX);
+                        flagExists = true;
+                    }
+                    if (data.substring(0,2).equals("fx") && flagExists){
+                        flag.x = Integer.parseInt(data.substring(2, data.length()));
+                    }
+                    if (data.substring(0,2).equals("fy") && flagExists){
+                        flag.y = Integer.parseInt(data.substring(2, data.length()));
+                    }
+
+                    if(data.substring(0,2).equals("gx")){
+                        gx = Integer.parseInt(data.substring(2, data.length()));
+                    }
+                    if(data.substring(0,2).equals("gy")){
+                        gy = Integer.parseInt(data.substring(2, data.length()));
+                        groundArray.add(new Ground(gx, gy));
+                    }
+
+                    if(data.substring(0,2).equals("ex")){
+                        ex = Integer.parseInt(data.substring(2, data.length()));
+                    }
+                    if(data.substring(0,2).equals("ey")){
+                        ey = Integer.parseInt(data.substring(2, data.length()));
+                        enemyArray.add(new Enemy(ex, ey));
+                        enemyArray.get(enemyArray.size() - 1).xVel = 1;
+                        enemyArray.get(enemyArray.size() - 1).yVel = 9;
+                        enemyExists = true;
+                    }
+
+
+                }
+                reader.close();
+            } catch (FileNotFoundException zz) {
+                System.out.println("An error occurred.");
+                zz.printStackTrace();
+            }
+        } else {
+            label.setText("Error: File does not exist or is not .txt");
+            subframe.pack();
+        }
+    }
+    public static void writeLevel(){
+        if(textField.getText().contains(".txt")) {
+            subframe.setVisible(false);
+            try {
+                levelName = textField.getText();
+                FileWriter writer = new FileWriter(levelName);
+                if (playerExists) {
+                    writer.write("px" + player.x + "\n");
+                    writer.write("py" + player.y + "\n");
+                }
+                if (flagExists) {
+                    writer.write("fx" + flag.x + "\n");
+                    writer.write("fy" + flag.y + "\n");
+                }
+                for (Ground g : groundArray) {
+                    writer.write("gx" + g.x + "\n");
+                    writer.write("gy" + g.y + "\n");
+                }
+                for (Enemy v : enemyArray) {
+                    writer.write("ex" + v.x + "\n");
+                    writer.write("ey" + v.y + "\n");
+                }
+                writer.close();
+            } catch (IOException z) {
+                System.out.println(levelName + " already exists.");
+                z.printStackTrace();
+            }
+        } else {
+            label.setText("Error: Please conclude your level name with .txt");
+            subframe.pack();
+        }
     }
 }
