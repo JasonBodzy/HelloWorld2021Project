@@ -3,14 +3,19 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Scanner;
 
 public class GameEngine extends Canvas implements MouseListener, MouseMotionListener, KeyListener{
 
     public static int WIDTH = 2000;
     public static int HEIGHT = 1000;
+
+    public static JFrame frame = new JFrame();
 
     boolean running = false;
 
@@ -26,10 +31,26 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
     boolean enemyExists = false;
     long t1;
 
+    Flag flag;
+    boolean flagExists = false;
+
+    Image groundImage, dirtImage, playerImage, enemyImage, flagImage;
+
     public GameEngine(){
         addMouseListener(this);
         addKeyListener(this);
         addMouseMotionListener(this);
+
+        try{
+            groundImage = ImageIO.read(this.getClass().getResource("/Assets/ground.png"));
+            dirtImage = ImageIO.read(this.getClass().getResource("/Assets/dirt.png"));
+            playerImage = ImageIO.read(this.getClass().getResource("/Assets/player.png"));
+            enemyImage = ImageIO.read(this.getClass().getResource("/Assets/enemy.png"));
+            flagImage = ImageIO.read(this.getClass().getResource("/Assets/flag.png"));
+
+        } catch (IOException e) {
+            System.out.println("image load fail");
+        }
     }
 
 
@@ -71,12 +92,22 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
                 }
 
                 //Wall Interactions
-                if((player.y == g.y || player.y + 40 >= g.y) && (player.x + 40 >= g.x && !(player.x >= g.x + 40 ))){
+                if((player.y == g.y || player.y + 40 == g.y) && (player.x + 40 >= g.x && !(player.x >= g.x + 40 ))){
                     player.x -= player.xVel;
                 }
-                if((player.y == g.y || player.y + 40 >= g.y) && (player.x <= g.x + 40 && !(player.x + 40 <= g.x ))){
+                if((player.y == g.y || player.y + 40 == g.y) && (player.x <= g.x + 40 && !(player.x + 40 <= g.x ))){
                     player.x += -player.xVel;
                 }
+
+                //Player-Flag Collision
+                if((player.y == flag.y) && (player.x + 40 >= flag.x && !(player.x >= flag.x + 40))){
+                    System.out.println("Win!");
+                }
+                if(player.y == flag.y && player.x <= flag.x + 40 && !(player.x + 40 <= flag.x)){
+                    System.out.println("Win!");
+                }
+
+
                 if(enemyExists) {
                     for (Enemy e : enemyArray) {
 
@@ -99,14 +130,12 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
                         if((e.y >= player.y && e.y <= player.y + 80) && (player.x + 40 >= e.x && !(player.x > e.x + 40))){
 
                             //Kill time
-                            if(player.y + 80 < e.y - 30 || player.y + 80 > e.y - 40 && player.onGround == false){
-                                System.out.println("Kill!!!");
+                            if(player.y + 80 < e.y - 30 || player.y + 80 > e.y - 40 && !player.onGround){
                                 e.x = -1000;
                                 player.yVel = -10;
                                 player.onGround = false;
                                 t1 = System.currentTimeMillis();
                             } else {
-                                System.out.println((player.y + 80) + ", " + (e.y - 30));
                                 mode = 'C';
                                 running = false;
                             }
@@ -124,7 +153,7 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
     public static void main(String[] args) {
 
 
-        JFrame frame = new JFrame("Hello World 2021 Game Engine");
+        frame = new JFrame("Hello World 2021 Game Engine");
 
         Canvas canvas = new GameEngine();
         canvas.setSize(WIDTH, HEIGHT);
@@ -165,15 +194,28 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
         }
 
         for(Ground grnd : groundArray){
-            g.drawImage(grnd.image, grnd.x, grnd.y, this);
+            for(Ground grnd2 : groundArray){
+                if(grnd.x == grnd2.x && grnd.y == grnd2.y + 40){
+                    grnd.isDirt = true;
+                }
+            }
+            if(grnd.isDirt){
+                g.drawImage(dirtImage, grnd.x, grnd.y, 40, 40,this);
+            } else {
+                g.drawImage(groundImage, grnd.x, grnd.y, 40, 40,this);
+            }
         }
 
         for(Enemy e : enemyArray){
-            g.drawImage(e.image, e.x, e.y, this);
+            g.drawImage(enemyImage, e.x, e.y, this);
         }
 
         if(playerExists){
-            g.drawImage(player.image, player.x, player.y, this);
+            g.drawImage(playerImage, player.x, player.y, this);
+        }
+
+        if(flagExists){
+            g.drawImage(flagImage, flag.x, flag.y, this);
         }
 
 
@@ -237,6 +279,121 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
             if(e.getKeyCode() == KeyEvent.VK_E){
                 mode = 'E';
             }
+            if(e.getKeyCode() == KeyEvent.VK_F){
+                mode = 'F';
+            }
+            //Writes level
+            if(e.getKeyCode() == KeyEvent.VK_S){
+                String levelName = "";
+                try {
+                    Scanner s = new Scanner(System.in);
+                    System.out.println("Enter a level save name.");
+                    levelName = s.nextLine();
+                    FileWriter writer = new FileWriter(levelName + ".txt");
+                    if(playerExists){
+                        writer.write("px" + player.x + "\n");
+                        writer.write("py" + player.y + "\n");
+                    }
+                    if(flagExists){
+                        writer.write("fx" + flag.x + "\n");
+                        writer.write("fy" + flag.y + "\n");
+                    }
+                    for(Ground g: groundArray){
+                        writer.write("gx" + g.x + "\n");
+                        writer.write("gy" + g.y + "\n");
+                    }
+                    for(Enemy v: enemyArray){
+                        writer.write("ex" + v.x + "\n");
+                        writer.write("ey" + v.y + "\n");
+                    }
+                    writer.close();
+                } catch (IOException z) {
+                    System.out.println(levelName + " already exists.");
+                    z.printStackTrace();
+                }
+            }
+            //Reads written level
+            if(e.getKeyCode() == KeyEvent.VK_L){
+                try {
+
+                    Scanner s = new Scanner(System.in);
+                    System.out.println("Enter a level load name.");
+                    String levelName = s.nextLine();
+                    File myObj = new File(levelName + ".txt");
+                    Scanner reader = new Scanner(myObj);
+
+                    int ex = 0;
+                    int ey = 0;
+                    int gx = 0;
+                    int gy = 0;
+
+                    while (reader.hasNextLine()) {
+                        String data = reader.nextLine();
+                        if(!playerExists){
+                            int playerX = 0;
+                            int playerY = 0;
+                            if (data.substring(0,2).equals("px")){
+                                playerX = Integer.parseInt(data.substring(2, data.length()));
+                            }
+                            if (data.substring(0,2).equals("py")){
+                                playerY = Integer.parseInt(data.substring(2, data.length()));
+                            }
+                            player = new Player(playerX, playerY);
+                            player.yVel = 9;
+                            playerExists = true;
+                        }
+                        if (data.substring(0,2).equals("px") && playerExists){
+                            player.x = Integer.parseInt(data.substring(2, data.length()));
+                        }
+                        if (data.substring(0,2).equals("py") && playerExists){
+                            player.y = Integer.parseInt(data.substring(2, data.length()));
+                        }
+                        if(!flagExists){
+                            int flagX = 0;
+                            int flagY = 0;
+                            if (data.substring(0,2).equals("px")){
+                                flagX = Integer.parseInt(data.substring(2, data.length()));
+                            }
+                            if (data.substring(0,2).equals("py")){
+                                flagY = Integer.parseInt(data.substring(2, data.length()));
+                            }
+                            flag = new Flag(flagX, flagX);
+                            flagExists = true;
+                        }
+                        if (data.substring(0,2).equals("fx") && flagExists){
+                            flag.x = Integer.parseInt(data.substring(2, data.length()));
+                        }
+                        if (data.substring(0,2).equals("fy") && flagExists){
+                            flag.y = Integer.parseInt(data.substring(2, data.length()));
+                        }
+
+                        if(data.substring(0,2).equals("gx")){
+                            gx = Integer.parseInt(data.substring(2, data.length()));
+                        }
+                        if(data.substring(0,2).equals("gy")){
+                            gy = Integer.parseInt(data.substring(2, data.length()));
+                            groundArray.add(new Ground(gx, gy));
+                        }
+
+                        if(data.substring(0,2).equals("ex")){
+                            ex = Integer.parseInt(data.substring(2, data.length()));
+                        }
+                        if(data.substring(0,2).equals("ey")){
+                            ey = Integer.parseInt(data.substring(2, data.length()));
+                            enemyArray.add(new Enemy(ex, ey));
+                            enemyArray.get(enemyArray.size() - 1).xVel = 1;
+                            enemyArray.get(enemyArray.size() - 1).yVel = 9;
+                            enemyExists = true;
+                        }
+
+
+                    }
+                    reader.close();
+                } catch (FileNotFoundException zz) {
+                    System.out.println("An error occurred.");
+                    zz.printStackTrace();
+                }
+            }
         }
     }
 
@@ -265,46 +422,78 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
 
     @Override
     public void mousePressed(MouseEvent e) {
+        if(e.getButton() == 1) {
+            switch (mode) {
+                case 'G':
+                    int newXPos = e.getX();
+                    while (newXPos % 40 != 0) {
+                        newXPos--;
+                    }
+                    int newYPos = e.getY();
+                    while (newYPos % 40 != 0) {
+                        newYPos--;
+                    }
+                    groundArray.add(new Ground(newXPos, newYPos));
+                    break;
+                case 'F':
+                    int newFlagXPos = e.getX();
+                    while (newFlagXPos % 40 != 0) {
+                        newFlagXPos--;
+                    }
+                    int newFlagYPos = e.getY();
+                    while (newFlagYPos % 40 != 0) {
+                        newFlagYPos--;
+                    }
+                    flag = new Flag(newFlagXPos, newFlagYPos);
+                    flagExists = true;
+                    break;
+                case 'P':
+                    int newPlayerXPos = e.getX();
+                    while (newPlayerXPos % 40 != 0) {
+                        newPlayerXPos--;
+                    }
+                    int newPlayerYPos = e.getY();
+                    while (newPlayerYPos % 40 != 0) {
+                        newPlayerYPos--;
+                    }
+                    player = new Player(newPlayerXPos, newPlayerYPos);
+                    player.yVel = 9;
+                    playerExists = true;
+                    break;
+                case 'E':
+                    int newEnemyXPos = e.getX();
+                    while (newEnemyXPos % 40 != 0) {
+                        newEnemyXPos--;
+                    }
+                    int newEnemyYPos = e.getY();
+                    while (newEnemyYPos % 40 != 0) {
+                        newEnemyYPos--;
+                    }
+                    enemyArray.add(new Enemy(newEnemyXPos, newEnemyYPos));
+                    enemyArray.get(enemyArray.size() - 1).xVel = 1;
+                    enemyArray.get(enemyArray.size() - 1).yVel = 9;
+                    enemyExists = true;
+                    break;
+            }
 
-        switch(mode){
-            case 'G':
-                int newXPos = e.getX();
-                while(newXPos % 40 != 0){
-                    newXPos --;
+        }
+
+        if(e.getButton() == 3){
+            for(Ground g : groundArray){
+                if(e.getX() >= g.x && e.getX() <= g.x + 40 && e.getY() >= g.y && e.getY() <= g.y + 40){
+                    g.x = -1000;
                 }
-                int newYPos = e.getY();
-                while(newYPos % 40 != 0){
-                    newYPos --;
+            }
+            for(Enemy v : enemyArray){
+                if(e.getX() >= v.x && e.getX() <= v.x + 40 && e.getY() >= v.y && e.getY() <= v.y + 40){
+                    v.x = -1000;
                 }
-                groundArray.add(new Ground(newXPos, newYPos));
-                break;
-            case 'P':
-                int newPlayerXPos = e.getX();
-                while(newPlayerXPos % 40 != 0){
-                    newPlayerXPos --;
+            }
+            if(playerExists) {
+                if (e.getX() > +player.x && e.getX() <= player.x + 40 && e.getY() >= player.y && e.getY() <= player.y + 80) {
+                    player.x = 10000;
                 }
-                int newPlayerYPos = e.getY();
-                while(newPlayerYPos % 40 != 0){
-                    newPlayerYPos --;
-                }
-                player = new Player(newPlayerXPos, newPlayerYPos);
-                player.yVel = 9;
-                playerExists = true;
-                break;
-            case 'E':
-                int newEnemyXPos = e.getX();
-                while(newEnemyXPos % 40 != 0){
-                    newEnemyXPos --;
-                }
-                int newEnemyYPos = e.getY();
-                while(newEnemyYPos % 40 != 0){
-                    newEnemyYPos --;
-                }
-                enemyArray.add(new Enemy(newEnemyXPos, newEnemyYPos));
-                enemyArray.get(enemyArray.size() - 1).xVel = 1;
-                enemyArray.get(enemyArray.size() - 1).yVel = 9;
-                enemyExists = true;
-                break;
+            }
         }
 
     }
@@ -326,19 +515,47 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
 
     @Override
     public void mouseDragged(MouseEvent e) {
-        switch(mode){
-            case 'G':
-                int newXPos = e.getX();
-                while(newXPos % 40 != 0){
-                    newXPos --;
-                }
-                int newYPos = e.getY();
-                while(newYPos % 40 != 0){
-                    newYPos --;
-                }
-                groundArray.add(new Ground(newXPos, newYPos));
-                break;
+        if(e.getButton() == 1) {
+            switch (mode) {
+                case 'G':
+                    int newXPos = e.getX();
+                    while (newXPos % 40 != 0) {
+                        newXPos--;
+                    }
+                    int newYPos = e.getY();
+                    while (newYPos % 40 != 0) {
+                        newYPos--;
+                    }
+                    groundArray.add(new Ground(newXPos, newYPos));
+                    break;
+                case 'E':
+                    int newEnemyXPos = e.getX();
+                    while (newEnemyXPos % 40 != 0) {
+                        newEnemyXPos--;
+                    }
+                    int newEnemyYPos = e.getY();
+                    while (newEnemyYPos % 40 != 0) {
+                        newEnemyYPos--;
+                    }
+                    enemyArray.add(new Enemy(newEnemyXPos, newEnemyYPos));
+                    enemyArray.get(enemyArray.size() - 1).xVel = 1;
+                    enemyArray.get(enemyArray.size() - 1).yVel = 9;
+                    enemyExists = true;
+                    break;
+            }
+        }
 
+        if(e.getButton() == 3){
+            for(Ground g : groundArray){
+                if(e.getX() >= g.x && e.getX() <= g.x + 40 && e.getY() >= g.y && e.getY() <= g.y + 40){
+                    g.x = -1000;
+                }
+            }
+            for(Enemy v : enemyArray){
+                if(e.getX() >= v.x && e.getX() <= v.x + 40 && e.getY() >= v.y && e.getY() <= v.y + 40){
+                    v.x = -1000;
+                }
+            }
         }
     }
 

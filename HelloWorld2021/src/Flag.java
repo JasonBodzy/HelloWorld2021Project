@@ -4,22 +4,16 @@ import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 
-public class Ground {
+public class Flag {
 
     int x,y, width, height;
 
-    boolean isDirt = false;
-
-    Ground (int x, int y) {
+    Flag (int x, int y) {
         this.x = x;
         this.y = y;
 
         this.width = 40;
         this.height = 40;
-
-        this.isDirt = isDirt;
-
-
 
     }
 
