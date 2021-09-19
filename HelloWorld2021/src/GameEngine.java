@@ -23,16 +23,19 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
 
     public static ArrayList<Ground> groundArray = new ArrayList<Ground>();
     public static ArrayList<Enemy> enemyArray = new ArrayList<>();
+    public static ArrayList<Platform> platformArray = new ArrayList<>();
+    public static ArrayList<FlyingEnemy> flyingEnemyArray = new ArrayList<>();
 
     public static Player player;
     public static boolean playerExists = false;
     public static boolean enemyExists = false;
+    public static boolean flyingEnemyExists = false;
     long t1;
 
     public static Flag flag;
     public static boolean flagExists = false;
 
-    Image groundImage, dirtImage, playerImage, enemyImage, flagImage;
+    Image groundImage, dirtImage, playerImage, enemyImage, flagImage, platformImage, flyingEnemyImage;
 
     //UI Stuff
     public static JFrame frame = new JFrame();
@@ -40,6 +43,10 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
     public static JPanel panel = new JPanel();
     public static JTextField textField = new JTextField();
     public static JLabel label = new JLabel();
+
+    public static String modeStatus = "Construct Mode";
+    private static Font serifFont = new Font("SanSerif", Font.BOLD, 34);
+
     public static Canvas canvas;
     public static JButton button;
 
@@ -58,6 +65,8 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
             playerImage = ImageIO.read(this.getClass().getResource("/Assets/player.png"));
             enemyImage = ImageIO.read(this.getClass().getResource("/Assets/enemy.png"));
             flagImage = ImageIO.read(this.getClass().getResource("/Assets/flag.png"));
+            platformImage = ImageIO.read(this.getClass().getResource("/Assets/platform.png"));
+            flyingEnemyImage = ImageIO.read(this.getClass().getResource("/Assets/flyingEnemy.png"));
 
         } catch (IOException e) {
             System.out.println("image load fail");
@@ -80,6 +89,38 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
                 }
             }
 
+            if(flyingEnemyExists){
+                for (FlyingEnemy b : flyingEnemyArray){
+                    b.x += b.xVel;
+                }
+                for(FlyingEnemy b : flyingEnemyArray) {
+                    // Flying enemy bounce
+                    for (Ground g : groundArray) {
+                        if ((b.y == g.y ) && (b.x + 40 >= g.x && !(b.x >= g.x + 40)) && b.xVel > 0){
+                            b.xVel = -b.xVel;
+                        } else if((b.y == g.y ) && (b.x <= g.x + 40 && !(b.x + 40 <= g.x)) && b.xVel < 0){
+                            b.xVel = -b.xVel;
+                        }
+                    }
+                    // Flying enemy collisions
+                    if(player.x + 40 >= b.x && player.x <= b.x + 40 && player.y + 80 >= b.y && player.y <= b.y + 40){
+                        System.out.println(player.onGround);
+                        //Kill time
+                        if((player.y + 80 >= b.y && player.y + 80 <= b.y + 10) && !(player.onGround)){
+                            b.x = -1000;
+                            b.y = -1000;
+                            player.yVel = -10;
+                            player.onGround = false;
+                            t1 = System.currentTimeMillis();
+                        } else {
+                            mode = 'C';
+                            running = false;
+                        }
+
+                    }
+                }
+            }
+
             //Jump -> Fall
             if(player.yVel == -10) {
                 if(System.currentTimeMillis() - t1 >= 250) {
@@ -88,6 +129,19 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
                     }
                 }
             }
+            //Player Platform interactions
+            for(Platform p: platformArray){
+                if(player.y + 80 >= p.y && player.y <= p.y + 20 && player.x + 40 >= p.x  && player.x <= p.x + 40){
+                    player.onGround = true;
+                    if(player.y + 80 - p.y <= 10){
+                        player.y = p.y - 80;
+                    }
+                }
+                if(player.y <= p.y + 40 && player.y + 80 >= p.y && player.x + 40 >= p.x  && player.x <= p.x + 40 && player.yVel < 9){
+                    player.yVel = player.yVel;
+                }
+            }
+
             //Player Interactions with the ground
             for(Ground g: groundArray){
                 if(player.y + 80 >= g.y && player.y <= g.y + 40 && player.x + 40 >= g.x  && player.x <= g.x + 40){
@@ -103,19 +157,21 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
                 }
 
                 //Wall Interactions
-                if((player.y == g.y || player.y + 40 == g.y) && (player.x + 40 >= g.x && !(player.x >= g.x + 40 ))){
+                if((player.y == g.y || player.y + 40 >= g.y) && (player.x + 40 >= g.x && !(player.x >= g.x + 40 ))){
                     player.x -= player.xVel;
                 }
-                if((player.y == g.y || player.y + 40 == g.y) && (player.x <= g.x + 40 && !(player.x + 40 <= g.x ))){
+                if((player.y == g.y || player.y + 40 >= g.y) && (player.x <= g.x + 40 && !(player.x + 40 <= g.x ))){
                     player.x += -player.xVel;
                 }
 
                 //Player-Flag Collision
-                if((player.y == flag.y) && (player.x + 40 >= flag.x && !(player.x >= flag.x + 40))){
-                    System.out.println("Win!");
-                }
-                if(player.y == flag.y && player.x <= flag.x + 40 && !(player.x + 40 <= flag.x)){
-                    System.out.println("Win!");
+                if(flagExists) {
+                    if ((player.y == flag.y) && (player.x + 40 >= flag.x && !(player.x >= flag.x + 40))) {
+                        System.out.println("Win!");
+                    }
+                    if (player.y == flag.y && player.x <= flag.x + 40 && !(player.x + 40 <= flag.x)) {
+                        System.out.println("Win!");
+                    }
                 }
 
 
@@ -143,6 +199,7 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
                             //Kill time
                             if(player.y + 80 < e.y - 30 || player.y + 80 > e.y - 40 && !player.onGround){
                                 e.x = -1000;
+                                e.speed = 0;
                                 player.yVel = -10;
                                 player.onGround = false;
                                 t1 = System.currentTimeMillis();
@@ -201,6 +258,7 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
         frame.add(canvas);
 
 
+
         frame.pack();
         frame.setVisible(true);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -211,6 +269,10 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
 
     //Drawing Method -> Called Every frame
     public void paint(Graphics g) {
+        //Draws Mode Status
+        g.setColor(Color.black);
+        g.setFont(serifFont);
+        g.drawString(modeStatus, WIDTH / 2 + 450, HEIGHT  / 2 + 450);
 
         //Draws Tile Grid
         if(!running) {
@@ -235,6 +297,10 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
             System.out.println("Instructions add here");
         }
 
+        for(Platform p : platformArray){
+            g.drawImage(platformImage, p.x, p.y, 40, 20, this);
+        }
+
         for(Ground grnd : groundArray){
             for(Ground grnd2 : groundArray){
                 if(grnd.x == grnd2.x && grnd.y == grnd2.y + 40){
@@ -250,6 +316,10 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
 
         for(Enemy e : enemyArray){
             g.drawImage(enemyImage, e.x, e.y, this);
+        }
+
+        for(FlyingEnemy b: flyingEnemyArray){
+            g.drawImage(flyingEnemyImage, b.x, b.y, this);
         }
 
         if(playerExists){
@@ -300,29 +370,44 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
 
         //Changes Toggled Edit Modes
         if(e.getKeyCode() == KeyEvent.VK_R){
-            mode = 'R';
+            mode = 'R'; // Run mode
             running = true;
+            modeStatus = "Run";
         }
         if(e.getKeyCode() == KeyEvent.VK_ESCAPE){
-            mode = 'C';
+            mode = 'C'; // Construct Mode
             running = false;
+            modeStatus = "Construct Mode";
         }
         if(mode != 'R') {
             if (e.getKeyCode() == KeyEvent.VK_G) {
-                mode = 'G';
+                mode = 'G'; // Ground Mode
+                modeStatus = "Ground Mode";
             }
             if (e.getKeyCode() == KeyEvent.VK_P) {
-                mode = 'P';
+                mode = 'P'; // Player Mode
+                modeStatus = "Player Mode";
             }
             if (e.getKeyCode() == KeyEvent.VK_H) {
-                mode = 'H';
+                mode = 'H'; // Help Mode
                 help = true;
+                modeStatus = "Help Mode";
             }
             if(e.getKeyCode() == KeyEvent.VK_E){
-                mode = 'E';
+                mode = 'E'; // Enemy Mode
+                modeStatus = "Enemy Mode";
             }
             if(e.getKeyCode() == KeyEvent.VK_F){
-                mode = 'F';
+                mode = 'F'; // Flag Mode
+                modeStatus = "Finish Mode";
+            }
+            if(e.getKeyCode() == KeyEvent.VK_MINUS){
+                mode = '-'; // Platform Mode
+                modeStatus = "Platform Mode";
+            }
+            if(e.getKeyCode() == KeyEvent.VK_B){
+                mode = 'B'; // Flying Enemy Mode
+                modeStatus = "Evil Bird Mode";
             }
             //Writes level
             if(e.getKeyCode() == KeyEvent.VK_S){
@@ -334,6 +419,7 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
                 subframe.pack();
                 loadNeeded = false;
                 saveNeeded = true;
+                modeStatus = "Write Level";
             }
             //Reads written level
             if(e.getKeyCode() == KeyEvent.VK_L){
@@ -346,6 +432,7 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
                 subframe.pack();
                 saveNeeded = false;
                 loadNeeded = true;
+                modeStatus = "Load Level";
             }
         }
     }
@@ -354,6 +441,7 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
     public void keyReleased(KeyEvent e) {
         if(e.getKeyCode() == KeyEvent.VK_H){
             help = false;
+            modeStatus = "Construct Mode";
         }
 
         if(playerExists) {
@@ -387,6 +475,17 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
                         newYPos--;
                     }
                     groundArray.add(new Ground(newXPos, newYPos));
+                    break;
+                case '-':
+                    int newPlatformXPos = e.getX();
+                    while (newPlatformXPos % 40 != 0) {
+                        newPlatformXPos--;
+                    }
+                    int newPlatformYPos = e.getY();
+                    while (newPlatformYPos % 40 != 0) {
+                        newPlatformYPos--;
+                    }
+                    platformArray.add(new Platform(newPlatformXPos, newPlatformYPos));
                     break;
                 case 'F':
                     int newFlagXPos = e.getX();
@@ -423,10 +522,25 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
                         newEnemyYPos--;
                     }
                     enemyArray.add(new Enemy(newEnemyXPos, newEnemyYPos));
-                    enemyArray.get(enemyArray.size() - 1).xVel = 1;
+                    enemyArray.get(enemyArray.size() - 1).xVel = enemyArray.get(enemyArray.size() - 1).speed;
                     enemyArray.get(enemyArray.size() - 1).yVel = 9;
                     enemyExists = true;
                     break;
+                case 'B':
+                    int newFlyingEnemyXPos = e.getX();
+                    while (newFlyingEnemyXPos % 40 != 0) {
+                        newFlyingEnemyXPos--;
+                    }
+                    int newFlyingEnemyYPos = e.getY();
+                    while (newFlyingEnemyYPos % 40 != 0) {
+                        newFlyingEnemyYPos--;
+                    }
+                    flyingEnemyArray.add(new FlyingEnemy(newFlyingEnemyXPos, newFlyingEnemyYPos));
+                    flyingEnemyArray.get(flyingEnemyArray.size() - 1).xVel = flyingEnemyArray.get(flyingEnemyArray.size() - 1).speed;
+                    flyingEnemyArray.get(flyingEnemyArray.size() - 1).yVel = 9;
+                    flyingEnemyExists = true;
+                    break;
+
             }
 
         }
@@ -442,9 +556,27 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
                     v.x = -1000;
                 }
             }
+
+            for(FlyingEnemy b : flyingEnemyArray){
+                if(e.getX() >= b.x && e.getX() <= b.x + 40 && e.getY() >= b.y && e.getY() <= b.y + 40){
+                    b.x = -1000;
+                    b.y = -1000;
+                }
+            }
+
+            for(Platform p : platformArray){
+                if(e.getX() >= p.x && e.getX() <= p.x + 40 && e.getY() >= p.y && e.getY() <= p.y + 20){
+                    p.x = -1000;
+                }
+            }
             if(playerExists) {
                 if (e.getX() > +player.x && e.getX() <= player.x + 40 && e.getY() >= player.y && e.getY() <= player.y + 80) {
                     player.x = 10000;
+                }
+            }
+            if(flagExists) {
+                if (e.getX() > +flag.x && e.getX() <= flag.x + 40 && e.getY() >= flag.y && e.getY() <= flag.y + 80) {
+                    flag.x = -10000;
                 }
             }
         }
@@ -495,6 +627,32 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
                     enemyArray.get(enemyArray.size() - 1).yVel = 9;
                     enemyExists = true;
                     break;
+                case '-':
+                    int newPlatformXPos = e.getX();
+                    while (newPlatformXPos % 40 != 0) {
+                        newPlatformXPos--;
+                    }
+                    int newPlatformYPos = e.getY();
+                    while (newPlatformYPos % 40 != 0) {
+                        newPlatformYPos--;
+                    }
+                    platformArray.add(new Platform(newPlatformXPos, newPlatformYPos));
+                    break;
+                case 'B':
+                    int newFlyingEnemyXPos = e.getX();
+                    while (newFlyingEnemyXPos % 40 != 0) {
+                        newFlyingEnemyXPos--;
+                    }
+                    int newFlyingEnemyYPos = e.getY();
+                    while (newFlyingEnemyYPos % 40 != 0) {
+                        newFlyingEnemyYPos--;
+                    }
+                    flyingEnemyArray.add(new FlyingEnemy(newFlyingEnemyXPos, newFlyingEnemyYPos));
+                    flyingEnemyArray.get(flyingEnemyArray.size() - 1).xVel = flyingEnemyArray.get(flyingEnemyArray.size() - 1).speed;
+                    flyingEnemyArray.get(flyingEnemyArray.size() - 1).yVel = 9;
+                    flyingEnemyExists = true;
+                    break;
+
             }
         }
 
@@ -507,6 +665,19 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
             for(Enemy v : enemyArray){
                 if(e.getX() >= v.x && e.getX() <= v.x + 40 && e.getY() >= v.y && e.getY() <= v.y + 40){
                     v.x = -1000;
+                }
+            }
+
+            for(FlyingEnemy b : flyingEnemyArray){
+                if(e.getX() >= b.x && e.getX() <= b.x + 40 && e.getY() >= b.y && e.getY() <= b.y + 40){
+                    b.x = -1000;
+                    b.y = -1000;
+                }
+            }
+
+            for(Platform p : platformArray){
+                if(e.getX() >= p.x && e.getX() <= p.x + 40 && e.getY() >= p.y && e.getY() <= p.y + 20){
+                    p.x = -1000;
                 }
             }
         }
@@ -533,6 +704,10 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
                 int ey = 0;
                 int gx = 0;
                 int gy = 0;
+                int plx = 0;
+                int ply = 0;
+                int bx = 0;
+                int by = 0;
 
                 while (reader.hasNextLine()) {
                     String data = reader.nextLine();
@@ -588,10 +763,28 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
                     if(data.substring(0,2).equals("ey")){
                         ey = Integer.parseInt(data.substring(2, data.length()));
                         enemyArray.add(new Enemy(ex, ey));
-                        enemyArray.get(enemyArray.size() - 1).xVel = 1;
+                        enemyArray.get(enemyArray.size() - 1).xVel = enemyArray.get(enemyArray.size() - 1).speed;
                         enemyArray.get(enemyArray.size() - 1).yVel = 9;
                         enemyExists = true;
                     }
+                    if(data.substring(0,2).equals("-x")){
+                        plx = Integer.parseInt(data.substring(2, data.length()));
+                    }
+                    if(data.substring(0,2).equals("-y")){
+                        ply = Integer.parseInt(data.substring(2, data.length()));
+                        platformArray.add(new Platform(plx, ply));
+                    }
+                    if(data.substring(0,2).equals("bx")){
+                        bx = Integer.parseInt(data.substring(2, data.length()));
+                    }
+                    if(data.substring(0,2).equals("by")){
+                        by = Integer.parseInt(data.substring(2, data.length()));
+                        flyingEnemyArray.add(new FlyingEnemy(bx, by));
+                        flyingEnemyArray.get(flyingEnemyArray.size() - 1).xVel = flyingEnemyArray.get(flyingEnemyArray.size() - 1).speed;
+                        flyingEnemyArray.get(flyingEnemyArray.size() - 1).yVel = 9;
+                        flyingEnemyExists = true;
+                    }
+
 
 
                 }
@@ -626,6 +819,14 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
                 for (Enemy v : enemyArray) {
                     writer.write("ex" + v.x + "\n");
                     writer.write("ey" + v.y + "\n");
+                }
+                for (Platform p : platformArray){
+                    writer.write("-x" + p.x + "\n");
+                    writer.write("-y" + p.y + "\n");
+                }
+                for (FlyingEnemy b : flyingEnemyArray){
+                    writer.write("bx" + b.x + "\n");
+                    writer.write("by" + b.y + "\n");
                 }
                 writer.close();
             } catch (IOException z) {
