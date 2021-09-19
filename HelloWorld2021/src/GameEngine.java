@@ -8,6 +8,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Random;
 import java.util.Scanner;
 
 public class GameEngine extends Canvas implements MouseListener, MouseMotionListener, KeyListener{
@@ -35,7 +36,7 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
     public static Flag flag;
     public static boolean flagExists = false;
 
-    Image groundImage, dirtImage, playerImage, enemyImage, flagImage, platformImage, flyingEnemyImage;
+    Image groundImage, dirtImage, playerImage, playerImageBK, enemyImage, flagImage, platformImage, flyingEnemyImage, flyingEnemyImageBK, helpImage;
 
     //UI Stuff
     public static JFrame frame = new JFrame();
@@ -54,6 +55,8 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
     public static boolean saveNeeded = false;
     public static String levelName;
 
+    int cloudX = 0;
+
     public GameEngine(){
         addMouseListener(this);
         addKeyListener(this);
@@ -63,10 +66,16 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
             groundImage = ImageIO.read(this.getClass().getResource("/Assets/ground.png"));
             dirtImage = ImageIO.read(this.getClass().getResource("/Assets/dirt.png"));
             playerImage = ImageIO.read(this.getClass().getResource("/Assets/player.png"));
+            playerImageBK = ImageIO.read(this.getClass().getResource("/Assets/playerBK.png"));
             enemyImage = ImageIO.read(this.getClass().getResource("/Assets/enemy.png"));
             flagImage = ImageIO.read(this.getClass().getResource("/Assets/flag.png"));
             platformImage = ImageIO.read(this.getClass().getResource("/Assets/platform.png"));
             flyingEnemyImage = ImageIO.read(this.getClass().getResource("/Assets/flyingEnemy.png"));
+            flyingEnemyImageBK = ImageIO.read(this.getClass().getResource("/Assets/flyingEnemyBK.png"));
+            helpImage = ImageIO.read(this.getClass().getResource("/Assets/help.png"));
+
+
+
 
         } catch (IOException e) {
             System.out.println("image load fail");
@@ -81,6 +90,11 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
         if(running && playerExists) {
             player.x += player.xVel;
             player.y += player.yVel;
+            if(player.y > HEIGHT){
+                mode = 'C';
+                modeStatus = "Player Killed, Construct Mode";
+                running = false;
+            }
             if(enemyExists) {
                 for (Enemy e : enemyArray) {
                     e.x += e.xVel;
@@ -104,7 +118,6 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
                     }
                     // Flying enemy collisions
                     if(player.x + 40 >= b.x && player.x <= b.x + 40 && player.y + 80 >= b.y && player.y <= b.y + 40){
-                        System.out.println(player.onGround);
                         //Kill time
                         if((player.y + 80 >= b.y && player.y + 80 <= b.y + 10) && !(player.onGround)){
                             b.x = -1000;
@@ -114,6 +127,7 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
                             t1 = System.currentTimeMillis();
                         } else {
                             mode = 'C';
+                            modeStatus = "Player Killed, Construct Mode";
                             running = false;
                         }
 
@@ -157,20 +171,20 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
                 }
 
                 //Wall Interactions
-                if((player.y == g.y || player.y + 40 >= g.y) && (player.x + 40 >= g.x && !(player.x >= g.x + 40 ))){
+                if((player.y >= g.y && player.y <= g.y + 40) && (player.x + 40 >= g.x && !(player.x >= g.x + 40 ))){
                     player.x -= player.xVel;
                 }
-                if((player.y == g.y || player.y + 40 >= g.y) && (player.x <= g.x + 40 && !(player.x + 40 <= g.x ))){
+                if((player.y + 40 >= g.y && player.y + 40 <= g.y + 40) && (player.x <= g.x + 40 && !(player.x + 40 <= g.x ))){
                     player.x += -player.xVel;
                 }
 
                 //Player-Flag Collision
                 if(flagExists) {
                     if ((player.y == flag.y) && (player.x + 40 >= flag.x && !(player.x >= flag.x + 40))) {
-                        System.out.println("Win!");
+                        modeStatus = "Level Completed";
                     }
                     if (player.y == flag.y && player.x <= flag.x + 40 && !(player.x + 40 <= flag.x)) {
-                        System.out.println("Win!");
+                        modeStatus = "Level Completed";
                     }
                 }
 
@@ -205,6 +219,7 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
                                 t1 = System.currentTimeMillis();
                             } else {
                                 mode = 'C';
+                                modeStatus = "Player Killed, Construct Mode";
                                 running = false;
                             }
 
@@ -293,8 +308,17 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
             }
         }
 
+
+        if(running){
+            g.setColor(Color.blue);
+            g.fillRect(0,0,WIDTH,HEIGHT);
+
+            g.setColor(Color.black);
+            g.setFont(serifFont);
+            g.drawString(modeStatus, WIDTH / 2 + 450, HEIGHT  / 2 + 450);
+        }
         if(help){
-            System.out.println("Instructions add here");
+            g.drawImage(helpImage, (WIDTH / 2) - helpImage.getWidth(this) / 2 , (HEIGHT / 2) - helpImage.getHeight(this) / 2 ,  this);
         }
 
         for(Platform p : platformArray){
@@ -319,11 +343,27 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
         }
 
         for(FlyingEnemy b: flyingEnemyArray){
-            g.drawImage(flyingEnemyImage, b.x, b.y, this);
+            if(b.xVel >= 0) {
+                g.drawImage(flyingEnemyImage, b.x, b.y, this);
+            } else{
+                g.drawImage(flyingEnemyImageBK, b.x, b.y, this);
+            }
+
         }
 
         if(playerExists){
-            g.drawImage(playerImage, player.x, player.y, this);
+            if(player.xVel > 0) {
+                if(player.y < 0){
+                    player.y = 0;
+                }
+                g.drawImage(playerImageBK, player.x, player.y, this);
+            } else {
+                if(player.y < 0){
+                    player.y = 0;
+                }
+                g.drawImage(playerImage, player.x, player.y, this);
+            }
+
         }
 
         if(flagExists){
@@ -364,6 +404,20 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
                     player.yVel = -10;
                     player.onGround = false;
                     t1 = System.currentTimeMillis();
+                }
+            }
+            if(e.getKeyCode() == KeyEvent.VK_DOWN){
+                for(Platform p : platformArray){
+                    if(player.y + 80 >= p.y && player.y <= p.y + 20 && player.x + 40 >= p.x  && player.x <= p.x + 40){
+                        player.onGround = true;
+                        player.y += 4;
+                        if(player.y + 80 - p.y <= 10){
+                            player.y = p.y - 80;
+                        }
+                    }
+                    if(player.y <= p.y + 40 && player.y + 80 >= p.y && player.x + 40 >= p.x  && player.x <= p.x + 40 && player.yVel < 9){
+                        player.yVel = player.yVel;
+                    }
                 }
             }
         }
@@ -407,7 +461,7 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
             }
             if(e.getKeyCode() == KeyEvent.VK_B){
                 mode = 'B'; // Flying Enemy Mode
-                modeStatus = "Evil Bird Mode";
+                modeStatus = "Bee Mode";
             }
             //Writes level
             if(e.getKeyCode() == KeyEvent.VK_S){
@@ -441,6 +495,7 @@ public class GameEngine extends Canvas implements MouseListener, MouseMotionList
     public void keyReleased(KeyEvent e) {
         if(e.getKeyCode() == KeyEvent.VK_H){
             help = false;
+            mode = 'C';
             modeStatus = "Construct Mode";
         }
 
