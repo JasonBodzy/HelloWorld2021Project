@@ -13,6 +13,8 @@ import java.util.Scanner;
 
 public class GameEngine extends Canvas implements MouseListener, MouseMotionListener, KeyListener{
 
+    //main game engine class
+    
     public static int WIDTH = 2000;
     public static int HEIGHT = 1000;
 
